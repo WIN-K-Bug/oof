@@ -55,6 +55,8 @@ class WebSocketHandler:
 
     def parse_tick(self, tick: dict) -> dict:
         """Normalize a raw broker tick via the field fallback chain."""
+        if not isinstance(tick, dict):
+            return {}
         try:
             token = (
                 tick.get("token")
@@ -122,8 +124,17 @@ class WebSocketHandler:
     def on_data(self, wsapp, message) -> None:
         """Raw callback fired by SmartWebSocketV2 on every tick."""
         try:
+            if isinstance(message, (bytes, bytearray)):
+                try:
+                    message = message.decode("utf-8")
+                except Exception:
+                    pass
+
             if isinstance(message, str):
-                tick_raw = json.loads(message)
+                try:
+                    tick_raw = json.loads(message)
+                except Exception:
+                    tick_raw = message
             else:
                 tick_raw = message
 

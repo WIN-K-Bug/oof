@@ -1,0 +1,72 @@
+{
+  "total_signals": 5,
+  "wins": 1,
+  "losses": 2,
+  "expired": 2,
+  "win_rate_pct": 20.0,
+  "ce_signals": 5,
+  "pe_signals": 0,
+  "avg_confidence": 75.0,
+  "signals": [
+    {
+      "signal": "BUY_CE",
+      "strike": 23550,
+      "symbol": "NIFTY17JUN2423500CE",
+      "entry": 96.0,
+      "stop_loss": 62.4,
+      "target": 158.4,
+      "confidence": 75,
+      "direction": "CE",
+      "timestamp": "2024-06-17T09:50:00",
+      "outcome": "WIN"
+    },
+    {
+      "signal": "BUY_CE",
+      "strike": 23550,
+      "symbol": "NIFTY17JUN2423500CE",
+      "entry": 118.5,
+      "stop_loss": 77.03,
+      "target": 195.52,
+      "confidence": 75,
+      "direction": "CE",
+      "timestamp": "2024-06-17T10:04:00",
+      "outcome": "LOSS"
+    },
+    {
+      "signal": "BUY_CE",
+      "strike": 23600,
+      "symbol": "NIFTY17JUN2423500CE",
+      "entry": 162.25,
+      "stop_loss": 105.46,
+      "target": 267.71,
+      "confidence": 75,
+      "direction": "CE",
+      "timestamp": "2024-06-17T10:20:00",
+      "outcome": "LOSS"
+    },
+    {
+      "signal": "BUY_CE",
+      "strike": 23650,
+      "symbol": "NIFTY17JUN2423500CE",
+      "entry": 75.5,
+      "stop_loss": 49.08,
+      "target": 124.57,
+      "confidence": 75,
+      "direction": "CE",
+      "timestamp": "2024-06-17T10:34:00",
+      "outcome": "EXPIRED"
+    },
+    {
+      "signal": "BUY_CE",
+      "strike": 23650,
+      "symbol": "NIFTY17JUN2423500CE",
+      "entry": 95.0,
+      "stop_loss": 61.75,
+      "target": 156.75,
+      "confidence": 75,
+      "direction": "CE",
+      "timestamp": "2024-06-17T10:50:00",
+      "outcome": "EXPIRED"
+    }
+  ]
+}

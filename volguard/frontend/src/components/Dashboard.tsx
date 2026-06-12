@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
-import { DashboardData } from '../types';
+import { DashboardData, SignalHistoryItem } from '../types';
+import GateStatus from './GateStatus';
+import SignalCard from './SignalCard';
+import FactorBreakdown from './FactorBreakdown';
+import SignalHistory from './SignalHistory';
 
 const API_BASE = 'http://localhost:8000';
 const POLL_INTERVAL = 1000;
+const HISTORY_POLL_INTERVAL = 10000;
 
 function useTickPulse(tickCount: number): boolean {
   const [isPulsing, setIsPulsing] = useState(false);
@@ -148,6 +153,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
 
 const Dashboard: React.FC = () => {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [history, setHistory] = useState<SignalHistoryItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
@@ -165,11 +171,30 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
+  const fetchHistory = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/signals/history`);
+      const raw = res.data;
+      const arr: SignalHistoryItem[] = Array.isArray(raw)
+        ? raw
+        : (raw?.signals ?? raw?.history ?? []);
+      setHistory(Array.isArray(arr) ? arr : []);
+    } catch {
+      // keep previous history on transient errors
+    }
+  }, []);
+
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [fetchData]);
+
+  useEffect(() => {
+    fetchHistory();
+    const interval = setInterval(fetchHistory, HISTORY_POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [fetchHistory]);
 
   const confidence = data?.dce?.confidence_score ?? 0;
   const gatesPassed = data?.dce?.gates_passed ?? 0;
@@ -383,54 +408,38 @@ const Dashboard: React.FC = () => {
         gap: '0'
       }}>
 
-        {/* LEFT COLUMN — placeholder, filled in Prompt 8 */}
+        {/* LEFT COLUMN — Gate Status */}
         <div style={{
           borderRight: '1px solid var(--border)',
-          overflow: 'auto',
+          overflow: 'hidden',
           padding: '16px',
           display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
+          flexDirection: 'column'
         }}>
-          <div style={{ fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: '8px' }}>
-            GATE STATUS
-          </div>
-          <div style={{ color: 'var(--muted)', fontSize: '12px' }}>
-            Loading gates...
-          </div>
+          <GateStatus dce={data?.dce} />
         </div>
 
-        {/* CENTER COLUMN — placeholder, filled in Prompt 8 */}
+        {/* CENTER COLUMN — Signal Card */}
         <div style={{
           overflow: 'auto',
-          padding: '16px',
+          padding: '16px 24px',
           display: 'flex',
           flexDirection: 'column',
           gap: '16px'
         }}>
-          <div style={{ fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.1em' }}>
-            SIGNAL
-          </div>
-          <div style={{ color: 'var(--muted)', fontSize: '12px' }}>
-            Waiting for signal...
-          </div>
+          <SignalCard signal={data?.signal} />
         </div>
 
-        {/* RIGHT COLUMN — placeholder, filled in Prompt 8 */}
+        {/* RIGHT COLUMN — Factor Breakdown + Signal History */}
         <div style={{
           borderLeft: '1px solid var(--border)',
           overflow: 'auto',
           padding: '16px',
           display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
+          flexDirection: 'column'
         }}>
-          <div style={{ fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: '8px' }}>
-            FACTOR BREAKDOWN
-          </div>
-          <div style={{ color: 'var(--muted)', fontSize: '12px' }}>
-            Loading factors...
-          </div>
+          <FactorBreakdown dce={data?.dce} />
+          <SignalHistory history={history} />
         </div>
 
       </div>

@@ -54,6 +54,20 @@ export interface MarketState {
   tick_healthy: boolean;
 }
 
+export interface SignalHistoryItem {
+  id?: number;
+  timestamp?: string;
+  signal_type?: string;
+  signal?: string;
+  direction?: string;
+  symbol?: string;
+  strike_price?: number;
+  strike?: number;
+  confidence_score?: number;
+  confidence?: number;
+  outcome?: string;
+}
+
 export interface DashboardData {
   tick_count: number;
   volguard_blocked: boolean;
