@@ -5,6 +5,13 @@ __pycache__/
 .pytest_cache/
 backend/db/*.db
 backend/logs/*.log
+
+# VolGuard runtime data — excluded from version control
+*.db
+*.sqlite
+*.sqlite3
+backend/db/
+backend/backend/
 node_modules/
 frontend/build/
 frontend/.env.local

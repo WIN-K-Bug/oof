@@ -15,6 +15,9 @@ import uvicorn
 
 from data.instrument_mapper import InstrumentMapper
 from data.websocket_handler import WebSocketHandler
+from fastapi import UploadFile, File, BackgroundTasks
+from backtest_engine import BacktestEngine
+from data.historical_fetcher import HistoricalFetcher
 
 load_dotenv()
 
@@ -236,12 +239,20 @@ class MarketStateManager:
                 self._spot_price = tick.get("ltp", self._spot_price)
             self._state[token] = tick
 
-            ltp = tick.get("ltp", 0.0)
-            vol = tick.get("volume", 0)
-            if ltp > 0 and vol > 0:
-                self._vwap_sum += ltp * vol
-                self._vwap_volume += vol
-                self._vwap = self._vwap_sum / self._vwap_volume
+            # Update VWAP — only use option ticks, never spot index ticks
+            is_spot_token = token in ("99926000", "26000")
+            if not is_spot_token:
+                ltp = tick.get("ltp", 0.0)
+                vol = tick.get("volume", 0)
+                if ltp > 0 and vol > 0:
+                    self._vwap_sum += ltp * vol
+                    self._vwap_volume += vol
+                    self._vwap = self._vwap_sum / self._vwap_volume
+                    if self._vwap_volume == vol and self._vwap > 0:
+                        logger.info(
+                            f"[VWAP] First VWAP calculated: ₹{self._vwap:.2f} "
+                            f"from option ticks only."
+                        )
 
             self._tick_count += 1
             self._last_tick_time = time.time()
@@ -1052,6 +1063,8 @@ state_manager.attach_mapper(instrument_mapper)
 latest_dce_result: dict = {}
 latest_signal: dict = {}
 ws_handler: Optional[WebSocketHandler] = None
+backtest_engine: Optional[BacktestEngine] = None
+backtest_thread: Optional[threading.Thread] = None
 
 
 # ---------------------------------------------------------------------------
@@ -1342,6 +1355,128 @@ def update_outcome(signal_id: int, outcome: str):
     except Exception as e:
         logger.error(f"[API] /api/signals/outcome failed: {e}")
         return {"error": str(e), "timestamp": datetime.now().isoformat()}
+
+
+# ---------------------------------------------------------------------------
+# Section 9B: Backtest Routes
+# ---------------------------------------------------------------------------
+
+@app.post("/api/backtest/run")
+def run_backtest(background_tasks: BackgroundTasks, days: int = 5):
+    global backtest_engine, backtest_thread
+    try:
+        if backtest_engine and backtest_engine.is_running:
+            return {
+                "error": "Backtest already running",
+                "progress": backtest_engine.progress,
+            }
+
+        backtest_engine = BacktestEngine(DB_PATH)
+
+        def run_in_background():
+            try:
+                auth = authenticate_angel_one()
+                fetcher = HistoricalFetcher(auth.get("auth_token", ""))
+                df = fetcher.fetch_week_data(instrument_mapper, days=days)
+                valid, msg = fetcher.validate_dataframe(df)
+                if not valid:
+                    logger.error(f"[BACKTEST] Invalid data: {msg}")
+                    backtest_engine.summary = {"error": msg}
+                    return
+                backtest_engine.run(df)
+            except Exception as e:
+                logger.error(f"[BACKTEST] Background run failed: {e}")
+
+        backtest_thread = threading.Thread(
+            target=run_in_background, daemon=True, name="BacktestThread"
+        )
+        backtest_thread.start()
+
+        return {
+            "status": "started",
+            "run_id": backtest_engine.run_id,
+            "message": f"Backtest started for last {days} trading days",
+        }
+    except Exception as e:
+        logger.error(f"[BACKTEST] Run endpoint error: {e}")
+        return {"error": str(e)}
+
+
+@app.post("/api/backtest/upload")
+async def upload_and_backtest(file: UploadFile = File(...)):
+    global backtest_engine
+    try:
+        if backtest_engine and backtest_engine.is_running:
+            return {"error": "Backtest already running"}
+
+        contents = await file.read()
+        csv_content = contents.decode("utf-8")
+
+        fetcher = HistoricalFetcher()
+        df = fetcher.load_from_csv(csv_content)
+        valid, msg = fetcher.validate_dataframe(df)
+        if not valid:
+            return {"error": f"Invalid CSV: {msg}"}
+
+        backtest_engine = BacktestEngine(DB_PATH)
+
+        def run_in_background():
+            backtest_engine.run(df)
+
+        thread = threading.Thread(
+            target=run_in_background, daemon=True, name="BacktestUploadThread"
+        )
+        thread.start()
+
+        return {
+            "status": "started",
+            "run_id": backtest_engine.run_id,
+            "rows_loaded": len(df),
+            "message": "Backtest started from uploaded CSV",
+        }
+    except Exception as e:
+        logger.error(f"[BACKTEST] Upload endpoint error: {e}")
+        return {"error": str(e)}
+
+
+@app.get("/api/backtest/results")
+def get_backtest_results():
+    try:
+        if not backtest_engine:
+            return {
+                "status": "idle",
+                "message": "No backtest has been run yet",
+                "summary": {},
+                "daily_results": {},
+                "runs": [],
+            }
+        return {
+            "status": "running" if backtest_engine.is_running else "completed",
+            "progress": backtest_engine.progress,
+            "progress_message": backtest_engine.progress_message,
+            "run_id": backtest_engine.run_id,
+            "summary": backtest_engine.summary,
+            "daily_results": backtest_engine.daily_results,
+            "runs": backtest_engine.get_runs_from_db(),
+        }
+    except Exception as e:
+        logger.error(f"[BACKTEST] Results endpoint error: {e}")
+        return {"error": str(e)}
+
+
+@app.get("/api/backtest/trades")
+def get_backtest_trades(run_id: str = None):
+    try:
+        engine = backtest_engine or BacktestEngine(DB_PATH)
+        trades = engine.get_results_from_db(run_id)
+        return {
+            "trades": trades,
+            "count": len(trades),
+            "run_id": run_id,
+        }
+    except Exception as e:
+        logger.error(f"[BACKTEST] Trades endpoint error: {e}")
+        return {"error": str(e)}
 
 
 # ---------------------------------------------------------------------------

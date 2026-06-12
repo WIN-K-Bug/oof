@@ -47,8 +47,8 @@ Angel One SmartAPI
 ### 1. Clone the repository
 
 ```bash
-git clone https://gitlab.com/kevin10275108-group/wink-project.git
-cd wink-project/volguard
+git clone https://gitlab.com/kevin75108102-group/oof-4.git
+cd oof-4/volguard
 ```
 
 ### 2. Configure credentials
