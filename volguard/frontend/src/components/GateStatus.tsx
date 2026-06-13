@@ -116,7 +116,7 @@ const GateStatus: React.FC<GateStatusProps> = ({ dce }) => {
               gap: '8px',
               padding: '7px 10px',
               borderRadius: '4px',
-              background: row.passed ? '#e8f5e9' : '#4a2c2c',
+              background: row.passed ? '#00e6760d' : '#ff3d570d',
               border: `1px solid ${row.passed ? '#00e67633' : '#ff3d5733'}`
             }}
           >
@@ -134,7 +134,7 @@ const GateStatus: React.FC<GateStatusProps> = ({ dce }) => {
                 fontFamily: 'var(--font-ui)',
                 fontSize: '11px',
                 fontWeight: 600,
-                color: row.passed ? '#12121a' : '#ff8a7a',
+                color: row.passed ? 'var(--text)' : 'var(--red)',
                 letterSpacing: '0.02em'
               }}>
                 {row.index}. {row.name}
@@ -143,7 +143,7 @@ const GateStatus: React.FC<GateStatusProps> = ({ dce }) => {
                 <div style={{
                   fontFamily: 'var(--font-data)',
                   fontSize: '10px',
-                  color: row.passed ? '#4a6a4a' : '#b0837a',
+                  color: 'var(--muted)',
                   marginTop: '1px',
                   wordBreak: 'break-word'
                 }}>

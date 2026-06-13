@@ -43,11 +43,16 @@ check("Main module import", lambda: (
     __import__("main")
 ))
 
-check("SQLite DB writable", lambda: (
-    __import__("sqlite3").connect(
-        os.getenv("DB_PATH", "db/volguard.db")
-    ).close()
-))
+def _check_sqlite_writable():
+    # Use the SAME default DB_PATH as main.py so the healthcheck
+    # validates the exact file the live system will write to.
+    import sqlite3
+    db_path = os.getenv("DB_PATH", "backend/db/volguard.db")
+    os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
+    sqlite3.connect(db_path).close()
+
+
+check("SQLite DB writable", _check_sqlite_writable)
 
 check("Angel One API key set", lambda: (
     None if os.getenv("ANGEL_API_KEY", "your_api_key_here") == "your_api_key_here"

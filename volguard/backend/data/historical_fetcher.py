@@ -155,7 +155,11 @@ class HistoricalFetcher:
         """
         try:
             df = pd.read_csv(io.StringIO(csv_content))
-            df["timestamp"] = pd.to_datetime(df["date"] + " " + df["time"])
+            # Cast to str first: pandas may parse date/time columns as
+            # non-string dtypes, which breaks string concatenation.
+            df["timestamp"] = pd.to_datetime(
+                df["date"].astype(str) + " " + df["time"].astype(str)
+            )
             for col in ("ltp", "iv", "bid", "ask", "spot_price"):
                 if col in df.columns:
                     df[col] = df[col].astype(float)

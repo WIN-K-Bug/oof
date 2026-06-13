@@ -536,6 +536,8 @@ class BacktestEngine:
         except Exception as e:
             logger.error(f"[BACKTEST] run failed: {e}")
             self.is_running = False
+            self.progress_message = f"Backtest failed: {e}"
+            self.summary = {"error": str(e)}
             return {"error": str(e)}
 
     # ------------------------------------------------------------------

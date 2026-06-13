@@ -171,6 +171,14 @@ class WebSocketHandler:
     def on_close(self, wsapp) -> None:
         self.is_connected = False
         logger.warning("[WS] WebSocket connection closed.")
+        # A connection that drops AFTER opening never raised in connect(),
+        # so trigger the backoff reconnect loop from here as well.
+        if self.is_running and not self._reconnecting:
+            threading.Thread(
+                target=self._handle_reconnect,
+                daemon=True,
+                name="WSReconnectThread",
+            ).start()
 
     def subscribe(self, token_list: list) -> None:
         """Subscribe in SNAP_QUOTE mode (full market depth + greeks)."""

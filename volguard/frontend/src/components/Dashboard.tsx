@@ -71,10 +71,10 @@ const ConvictionBar: React.FC<ConvictionBarProps> = ({
 
       <div style={{
         flex: 1,
+        position: 'relative',
         height: '6px',
         background: 'var(--border)',
-        borderRadius: '3px',
-        overflow: 'hidden'
+        borderRadius: '3px'
       }}>
         <div style={{
           height: '100%',
@@ -84,6 +84,19 @@ const ConvictionBar: React.FC<ConvictionBarProps> = ({
           transition: 'width 0.8s ease, background 0.5s ease',
           boxShadow: confidence >= 75 ? `0 0 8px ${color}66` : 'none'
         }} />
+        {/* Signal threshold marker — instantly shows distance to the 75% trigger */}
+        <div
+          title="Signal threshold: 75%"
+          style={{
+            position: 'absolute',
+            left: '75%',
+            top: '-4px',
+            width: '2px',
+            height: '14px',
+            background: 'var(--purple)',
+            borderRadius: '1px'
+          }}
+        />
       </div>
 
       <span style={{
@@ -184,6 +197,15 @@ const Dashboard: React.FC = () => {
     }
   }, []);
 
+  const toggleVolguard = useCallback(async () => {
+    try {
+      await axios.post(`${API_BASE}/api/volguard/toggle`);
+      fetchData();
+    } catch {
+      // transient error — next poll will resync
+    }
+  }, [fetchData]);
+
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, POLL_INTERVAL);
@@ -205,7 +227,7 @@ const Dashboard: React.FC = () => {
     <div style={{
       display: 'flex',
       flexDirection: 'column',
-      height: '100vh',
+      height: '100%',
       background: 'var(--bg)',
       overflow: 'hidden'
     }}>
@@ -260,6 +282,24 @@ const Dashboard: React.FC = () => {
             activeColor="#00e676"
             inactiveColor="#ffab00"
           />
+
+          <button
+            onClick={toggleVolguard}
+            style={{
+              padding: '4px 12px',
+              borderRadius: '4px',
+              border: `1px solid ${(data?.system_status?.volguard_blocked ?? false) ? 'var(--green)' : 'var(--red)'}`,
+              background: 'transparent',
+              color: (data?.system_status?.volguard_blocked ?? false) ? 'var(--green)' : 'var(--red)',
+              fontFamily: 'var(--font-ui)',
+              fontSize: '10px',
+              fontWeight: 700,
+              letterSpacing: '0.08em',
+              cursor: 'pointer'
+            }}
+          >
+            {(data?.system_status?.volguard_blocked ?? false) ? 'UNBLOCK' : 'BLOCK'}
+          </button>
 
           {/* Tick pulse indicator */}
           <div style={{
@@ -317,6 +357,23 @@ const Dashboard: React.FC = () => {
           fontSize: '12px'
         }}>
           ⚠ {error}
+        </div>
+      )}
+
+      {/* Blocked / loss-limit banner — calm amber, states the reason and the way back */}
+      {(data?.system_status?.volguard_blocked || data?.system_status?.daily_loss_limit_hit) && (
+        <div style={{
+          padding: '10px 24px',
+          background: '#ffab0015',
+          borderBottom: '1px solid #ffab0044',
+          color: 'var(--amber)',
+          fontFamily: 'var(--font-ui)',
+          fontSize: '12px',
+          letterSpacing: '0.03em'
+        }}>
+          {data?.system_status?.daily_loss_limit_hit
+            ? '■ DAILY LOSS LIMIT REACHED — signals locked for today. Capital protection engaged. Resets tomorrow.'
+            : '■ SIGNALS PAUSED — manual block active. Gates keep evaluating; press UNBLOCK to resume signal generation.'}
         </div>
       )}
 
@@ -395,6 +452,22 @@ const Dashboard: React.FC = () => {
             color: (data?.dce?.iv_rank ?? 50) > 70 ? 'var(--red)' : (data?.dce?.iv_rank ?? 50) < 30 ? 'var(--green)' : 'var(--amber)'
           }}>
             {(data?.dce?.iv_rank ?? 50).toFixed(1)}
+          </div>
+        </div>
+
+        <div style={{ width: '1px', height: '32px', background: 'var(--border)' }} />
+
+        <div>
+          <div style={{ fontSize: '10px', color: 'var(--muted)', letterSpacing: '0.1em', marginBottom: '2px' }}>
+            DAY P&L
+          </div>
+          <div style={{
+            fontFamily: 'var(--font-data)',
+            fontSize: '18px',
+            fontWeight: 600,
+            color: (data?.today_pnl ?? 0) >= 0 ? 'var(--green)' : 'var(--red)'
+          }}>
+            {(data?.today_pnl ?? 0) >= 0 ? '+' : ''}₹{(data?.today_pnl ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </div>
         </div>
       </div>

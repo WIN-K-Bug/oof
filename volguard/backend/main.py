@@ -1030,6 +1030,9 @@ def generate_signal(
         if state_manager._signal_logger:
             state_manager._signal_logger.log_signal(signal)
             state_manager.set_last_signal_time()
+            # Recompute AFTER arming the cooldown — the pre-computed value
+            # was always False at the moment a signal fires.
+            signal["cooldown_active"] = not state_manager.check_cooldown()
 
         return signal
     except Exception as e:
@@ -1206,6 +1209,7 @@ def get_dashboard():
         daily_loss_hit = state_manager._daily_loss_limit_hit
         confidence = latest_dce_result.get("confidence_score", 0)
         gates_passed = latest_dce_result.get("gates_passed", 0)
+        today_pnl = signal_logger.get_today_pnl()
 
         return {
             # Top-level flat keys (for simple UI access)
@@ -1217,6 +1221,7 @@ def get_dashboard():
             "daily_loss_limit_hit": daily_loss_hit,
             "spot_price": spot,
             "vwap": vwap,
+            "today_pnl": today_pnl,
             "confidence_score": confidence,
             "gates_passed": gates_passed,
             # Nested system_status block
@@ -1465,7 +1470,7 @@ def get_backtest_results():
 
 
 @app.get("/api/backtest/trades")
-def get_backtest_trades(run_id: str = None):
+def get_backtest_trades(run_id: Optional[str] = None):
     try:
         engine = backtest_engine or BacktestEngine(DB_PATH)
         trades = engine.get_results_from_db(run_id)
